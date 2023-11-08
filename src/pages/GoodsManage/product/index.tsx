@@ -2,94 +2,101 @@
 import services from '@/services';
 import {
   ActionType,
-  FooterToolbar,
   PageContainer,
+  ProColumns,
   ProDescriptionsItemProps,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
-import React, { useRef, useState } from 'react';
-import CreateForm from './components/CreateForm';
-import UpdateForm, { FormValueType } from './components/UpdateForm';
+import { Space, message } from 'antd';
+import React, { useRef } from 'react';
 
-const { addUser, queryUserList, deleteUser, modifyUser } =
-  services.UserController;
-
-/**
- * 添加节点
- * @param fields
- */
-const handleAdd = async (fields: API.ProductInfo) => {
-  const hide = message.loading('正在添加');
-  try {
-    await addUser({ ...fields });
-    hide();
-    message.success('添加成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('添加失败请重试！');
-    return false;
-  }
-};
-
-/**
- * 更新节点
- * @param fields
- */
-const handleUpdate = async (fields: FormValueType) => {
-  const hide = message.loading('正在配置');
-  try {
-    await modifyUser(
-      {
-        userId: fields.id || '',
-      },
-      {
-        name: fields.name || '',
-        nickName: fields.nickName || '',
-        email: fields.email || '',
-      },
-    );
-    hide();
-
-    message.success('配置成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('配置失败请重试！');
-    return false;
-  }
-};
-
-/**
- *  删除节点
- * @param selectedRows
- */
-const handleRemove = async (selectedRows: API.ProductInfo[]) => {
-  const hide = message.loading('正在删除');
-  if (!selectedRows) return true;
-  try {
-    await deleteUser({
-      userId: selectedRows.find((row) => row.id)?.id || '',
-    });
-    hide();
-    message.success('删除成功，即将刷新');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('删除失败，请重试');
-    return false;
-  }
-};
+const {
+  queryProductList,
+  freezeProduct,
+  thawProduct,
+  listProduct,
+  delistProduct,
+} = services.GoodsController;
 
 const TableList: React.FC<unknown> = () => {
-  const [createModalVisible, handleModalVisible] = useState<boolean>(false);
-  const [updateModalVisible, handleUpdateModalVisible] =
-    useState<boolean>(false);
-  const [stepFormValues, setStepFormValues] = useState({});
   const actionRef = useRef<ActionType>();
-  const [row, setRow] = useState<API.ProductInfo>();
-  const [selectedRowsState, setSelectedRows] = useState<API.ProductInfo[]>([]);
+
+  /**
+   * 冻结商品
+   * @param id
+   */
+  const handleFreeze = async (id: string) => {
+    const hide = message.loading('正在冻结');
+    try {
+      await freezeProduct(id);
+      hide();
+      message.success('冻结成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('冻结失败请重试！');
+      return false;
+    }
+  };
+
+  /**
+   * 解冻商品
+   * @param id
+   */
+  const handleThaw = async (id: string) => {
+    const hide = message.loading('正在解冻');
+    try {
+      await thawProduct(id);
+      hide();
+      message.success('解冻成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('解冻失败请重试！');
+      return false;
+    }
+  };
+
+  /**
+   * 冻结商品
+   * @param id
+   */
+  const handleDelist = async (id: string) => {
+    const hide = message.loading('正在下架');
+    try {
+      await delistProduct(id);
+      hide();
+      message.success('下架成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('下架失败请重试！');
+      return false;
+    }
+  };
+
+  /**
+   * 上架商品
+   * @param id
+   */
+  const handleList = async (id: string) => {
+    const hide = message.loading('正在上架');
+    try {
+      await listProduct(id);
+      hide();
+      message.success('上架成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('上架失败请重试！');
+      return false;
+    }
+  };
+
   const columns: ProDescriptionsItemProps<API.ProductInfo>[] = [
     {
       title: '序号',
@@ -107,7 +114,7 @@ const TableList: React.FC<unknown> = () => {
     },
     {
       title: '联系电话',
-      dataIndex: 'phone',
+      dataIndex: 'telephone',
     },
     {
       title: '商品编码',
@@ -116,16 +123,16 @@ const TableList: React.FC<unknown> = () => {
     },
     {
       title: '商品名称',
-      dataIndex: 'productName',
+      dataIndex: 'name',
     },
     {
       title: '商品详情',
-      dataIndex: 'detail',
+      dataIndex: 'description',
       hideInSearch: true,
     },
     {
       title: '商品图片',
-      dataIndex: 'productImg',
+      dataIndex: 'imgurl',
       hideInSearch: true,
     },
     {
@@ -148,18 +155,26 @@ const TableList: React.FC<unknown> = () => {
       dataIndex: 'option',
       valueType: 'option',
       render: (_, record) => (
-        <>
+        <Space>
           <a
-            onClick={() => {
-              handleUpdateModalVisible(true);
-              setStepFormValues(record);
-            }}
+            onClick={() =>
+              record.status === '1'
+                ? handleDelist(record.id)
+                : handleList(record.id)
+            }
           >
             {record.status === '1' ? '下架' : '上架'}
           </a>
-          <a href="">冻结</a>
-          <a href="">详情</a>
-        </>
+          <a
+            onClick={() =>
+              record.status === '1'
+                ? handleFreeze(record.id)
+                : handleThaw(record.id)
+            }
+          >
+            {record.status === '1' ? '冻结' : '解冻'}
+          </a>
+        </Space>
       ),
     },
   ];
@@ -169,26 +184,12 @@ const TableList: React.FC<unknown> = () => {
       <ProTable<API.ProductInfo>
         headerTitle="会员管理"
         tableLayout="auto"
-        // actionRef={actionRef}
+        actionRef={actionRef}
         rowKey="id"
-        // search={false}
-        search={
-          {
-            // labelWidth: 120,
-          }
-        }
-        // toolBarRender={() => [
-        //   <Button
-        //     key="1"
-        //     type="primary"
-        //     onClick={() => handleModalVisible(true)}
-        //   >
-        //     新建
-        //   </Button>,
-        // ]}
+        search={{}}
         options={false}
         request={async (params, sorter, filter) => {
-          const { data, success } = await queryUserList({
+          const { data, success } = await queryProductList({
             ...params,
             // FIXME: remove @ts-ignore
             // @ts-ignore
@@ -200,72 +201,8 @@ const TableList: React.FC<unknown> = () => {
             success,
           };
         }}
-        columns={columns}
-        rowSelection={{
-          onChange: (_, selectedRows) => setSelectedRows(selectedRows),
-        }}
+        columns={columns as ProColumns<API.ProductInfo, 'text'>[]}
       />
-      {selectedRowsState?.length > 0 && (
-        <FooterToolbar
-          extra={
-            <div>
-              已选择{' '}
-              <a style={{ fontWeight: 600 }}>{selectedRowsState.length}</a>{' '}
-              项&nbsp;&nbsp;
-            </div>
-          }
-        >
-          <Button
-            onClick={async () => {
-              await handleRemove(selectedRowsState);
-              setSelectedRows([]);
-              actionRef.current?.reloadAndRest?.();
-            }}
-          >
-            批量删除
-          </Button>
-          <Button type="primary">批量审批</Button>
-        </FooterToolbar>
-      )}
-      <CreateForm
-        onCancel={() => handleModalVisible(false)}
-        modalVisible={createModalVisible}
-      >
-        <ProTable<API.ProductInfo, API.ProductInfo>
-          onSubmit={async (value) => {
-            const success = await handleAdd(value);
-            if (success) {
-              handleModalVisible(false);
-              if (actionRef.current) {
-                actionRef.current.reload();
-              }
-            }
-          }}
-          rowKey="id"
-          type="form"
-          columns={columns}
-        />
-      </CreateForm>
-      {stepFormValues && Object.keys(stepFormValues).length ? (
-        <UpdateForm
-          onSubmit={async (value) => {
-            const success = await handleUpdate(value);
-            if (success) {
-              handleUpdateModalVisible(false);
-              setStepFormValues({});
-              if (actionRef.current) {
-                actionRef.current.reload();
-              }
-            }
-          }}
-          onCancel={() => {
-            handleUpdateModalVisible(false);
-            setStepFormValues({});
-          }}
-          updateModalVisible={updateModalVisible}
-          values={stepFormValues}
-        />
-      ) : null}
     </PageContainer>
   );
 };

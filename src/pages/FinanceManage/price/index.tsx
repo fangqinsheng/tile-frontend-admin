@@ -2,95 +2,44 @@
 import services from '@/services';
 import {
   ActionType,
-  FooterToolbar,
   PageContainer,
+  ProColumns,
   ProDescriptionsItemProps,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
+import { Button, Form, Input, Space, message } from 'antd';
 import React, { useRef, useState } from 'react';
 import CreateForm from './components/CreateForm';
-import { FormValueType } from './components/UpdateForm';
 
-const { addUser, queryUserList, deleteUser, modifyUser } =
-  services.UserController;
-
-/**
- * 添加节点
- * @param fields
- */
-const handleAdd = async (fields: API.ProductInfo) => {
-  const hide = message.loading('正在添加');
-  try {
-    await addUser({ ...fields });
-    hide();
-    message.success('添加成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('添加失败请重试！');
-    return false;
-  }
-};
-
-/**
- * 更新节点
- * @param fields
- */
-const handleUpdate = async (fields: FormValueType) => {
-  const hide = message.loading('正在配置');
-  try {
-    await modifyUser(
-      {
-        userId: fields.id || '',
-      },
-      {
-        name: fields.name || '',
-        nickName: fields.nickName || '',
-        email: fields.email || '',
-      },
-    );
-    hide();
-
-    message.success('配置成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('配置失败请重试！');
-    return false;
-  }
-};
-
-/**
- *  删除节点
- * @param selectedRows
- */
-const handleRemove = async (selectedRows: API.ProductInfo[]) => {
-  const hide = message.loading('正在删除');
-  if (!selectedRows) return true;
-  try {
-    await deleteUser({
-      userId: selectedRows.find((row) => row.id)?.id || '',
-    });
-    hide();
-    message.success('删除成功，即将刷新');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('删除失败，请重试');
-    return false;
-  }
-};
+const { queryPriceList, savePrice } = services.FinanceController;
 
 const TableList: React.FC<unknown> = () => {
-  const [visible, setVisible] = useState<boolean>(false);
-  const [updateModalVisible, handleUpdateModalVisible] =
-    useState<boolean>(false);
-  const [stepFormValues, setStepFormValues] = useState({});
   const actionRef = useRef<ActionType>();
-  const [row, setRow] = useState<API.ProductInfo>();
-  const [selectedRowsState, setSelectedRows] = useState<API.ProductInfo[]>([]);
-  const columns: ProDescriptionsItemProps<API.ProductInfo>[] = [
+
+  const [form] = Form.useForm();
+
+  const [visible, setVisible] = useState<boolean>(false);
+
+  /**
+   * 禁用
+   * @param id
+   */
+  const handleUpdate = async (data: API.PriceInfo) => {
+    const hide = message.loading('正在编辑');
+    try {
+      await savePrice(data);
+      hide();
+      message.success('编辑成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('编辑失败请重试！');
+      return false;
+    }
+  };
+
+  const columns: ProDescriptionsItemProps<API.PriceInfo>[] = [
     {
       title: '序号',
       dataIndex: 'index',
@@ -98,11 +47,11 @@ const TableList: React.FC<unknown> = () => {
     },
     {
       title: '项目',
-      dataIndex: 'item',
+      dataIndex: 'name',
     },
     {
       title: '规格',
-      dataIndex: 'code',
+      dataIndex: 'spec',
     },
     {
       title: '价格（元）',
@@ -118,8 +67,7 @@ const TableList: React.FC<unknown> = () => {
       valueType: 'option',
       render: (_, record) => (
         <>
-          <a onClick={() => setVisible(true)}>编辑</a>
-          <a href="">删除</a>
+          <a onClick={() => handleUpdate(record)}>编辑</a>
         </>
       ),
     },
@@ -127,26 +75,15 @@ const TableList: React.FC<unknown> = () => {
 
   return (
     <PageContainer header={{ title: null }}>
-      <ProTable<API.ProductInfo>
-        headerTitle="会员管理"
+      <ProTable<API.MemberInfo>
+        headerTitle="价格管理"
         tableLayout="auto"
-        // actionRef={actionRef}
+        actionRef={actionRef}
         rowKey="id"
-        // search={false}
         search={false}
-        // toolBarRender={() => [
-        //   <Button
-        //     key="1"
-        //     type="primary"
-        //     onClick={() => handleModalVisible(true)}
-        //   >
-        //     新建
-        //   </Button>,
-        // ]}
         options={false}
         request={async (params, sorter, filter) => {
-          const { data, success } = await queryUserList({
-            ...params,
+          const { data, success } = await queryPriceList({
             // FIXME: remove @ts-ignore
             // @ts-ignore
             sorter,
@@ -157,48 +94,59 @@ const TableList: React.FC<unknown> = () => {
             success,
           };
         }}
-        columns={columns}
-        rowSelection={{
-          onChange: (_, selectedRows) => setSelectedRows(selectedRows),
-        }}
+        columns={columns as ProColumns<API.MemberInfo, 'text'>[]}
       />
-      {selectedRowsState?.length > 0 && (
-        <FooterToolbar
-          extra={
-            <div>
-              已选择{' '}
-              <a style={{ fontWeight: 600 }}>{selectedRowsState.length}</a>{' '}
-              项&nbsp;&nbsp;
-            </div>
-          }
-        >
-          <Button
-            onClick={async () => {
-              await handleRemove(selectedRowsState);
-              setSelectedRows([]);
-              actionRef.current?.reloadAndRest?.();
-            }}
-          >
-            批量删除
-          </Button>
-          <Button type="primary">批量审批</Button>
-        </FooterToolbar>
-      )}
+
       <CreateForm onCancel={() => setVisible(false)} modalVisible={visible}>
-        <ProTable<API.ProductInfo, API.ProductInfo>
-          onSubmit={async (value) => {
-            const success = await handleAdd(value);
-            if (success) {
-              setVisible(false);
-              if (actionRef.current) {
-                actionRef.current.reload();
-              }
-            }
+        <Form
+          form={form}
+          labelCol={{ span: 6 }}
+          wrapperCol={{ span: 18 }}
+          initialValues={{ type: 'VIP', status: '1' }}
+          onFinish={(changeValue) => {
+            handleUpdate(changeValue);
           }}
-          rowKey="id"
-          type="form"
-          columns={columns}
-        />
+        >
+          <Form.Item
+            label="项目"
+            name="name"
+            required
+            rules={[{ required: true, message: '请输入' }]}
+          >
+            <Input placeholder="请输入" />
+          </Form.Item>
+          <Form.Item
+            label="规格"
+            name="spec"
+            required
+            rules={[{ required: true, message: '请输入' }]}
+          >
+            <Input placeholder="请输入" />
+          </Form.Item>
+          <Form.Item
+            label="价格"
+            name="price"
+            required
+            rules={[{ required: true, message: '请输入' }]}
+          >
+            <Input placeholder="请输入" />
+          </Form.Item>
+          <Form.Item
+            label="免费数量"
+            name="num"
+            required
+            rules={[{ required: true, message: '请输入' }]}
+          >
+            <Input placeholder="请输入" />
+          </Form.Item>
+
+          <Form.Item wrapperCol={{ offset: 8 }}>
+            <Space>
+              <Button onClick={() => setVisible(false)}>取消</Button>
+              <Button htmlType="submit">确定</Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </CreateForm>
     </PageContainer>
   );

@@ -23,8 +23,6 @@ const TableList: React.FC<unknown> = () => {
 
   const [form] = Form.useForm();
 
-  const [selectedRowsState, setSelectedRows] = useState<API.ClubInfo[]>([]);
-
   /**
    * 禁用
    * @param id
@@ -220,9 +218,6 @@ const TableList: React.FC<unknown> = () => {
           };
         }}
         columns={columns as ProColumns<API.ClubInfo, 'text'>[]}
-        rowSelection={{
-          onChange: (_, selectedRows) => setSelectedRows(selectedRows),
-        }}
       />
       <CreateForm
         title={isFlag ? '编辑会员卡' : '新建会员卡'}
@@ -296,8 +291,6 @@ const TableList: React.FC<unknown> = () => {
           </Form.Item>
         </Form>
       </CreateForm>
-      {/* 选中的展示 */}
-      {selectedRowsState && <></>}
     </PageContainer>
   );
 };

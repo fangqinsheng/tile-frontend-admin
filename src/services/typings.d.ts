@@ -83,6 +83,44 @@ declare namespace API {
     updateTime?: string; // 更新时间
   }
 
+  // 支付流水
+  interface PaymentInfo {
+    id: string; // 用户id
+    code: string; // 支付流水号
+    price: number; // 金额
+    status: string; // 支付状态
+    createTime: string; // 下单时间
+    paymentTime: string; // 支付时间
+  }
+
+  // 价格管理
+  interface PriceInfo {
+    id: string; // 用户id
+    name: string; // 项目
+    spec: number; // 规格
+    price: string; // 加恶搞
+    num: string; // 免费数量
+  }
+
+  // 退款流水
+  interface RefundInfo {
+    id: string; // 用户id
+    code: string; // 退款流水号
+    price: number; // 金额
+    status: string; // 退款状态
+    createTime: string; // 申请时间
+    refundTime: string; // 退款时间
+  }
+
+  // 系统反馈
+  interface NoticeInfo {
+    id: string;
+    userId: string; // 用户id
+    name: string; // 用户昵称
+    content: string; // 反馈内容
+    feedbackTime: string; // 反馈时间
+  }
+
   interface ClubInfoVO {
     /** 会员卡类型 */
     type?: string;
@@ -97,7 +135,7 @@ declare namespace API {
   }
 
   interface ProductInfo {
-    id?: string;
+    id: string;
     userName?: string; // 用户昵称
     telePhone?: string; // 联系电话
     productCode?: string; // 商品编码

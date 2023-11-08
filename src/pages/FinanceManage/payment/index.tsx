@@ -2,95 +2,39 @@
 import services from '@/services';
 import {
   ActionType,
-  FooterToolbar,
   PageContainer,
+  ProColumns,
   ProDescriptionsItemProps,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
-import React, { useRef, useState } from 'react';
-import CreateForm from './components/CreateForm';
-import UpdateForm, { FormValueType } from './components/UpdateForm';
+import { message } from 'antd';
+import React, { useRef } from 'react';
 
-const { addUser, queryUserList, deleteUser, modifyUser } =
-  services.UserController;
-
-/**
- * 添加节点
- * @param fields
- */
-const handleAdd = async (fields: API.ProductInfo) => {
-  const hide = message.loading('正在添加');
-  try {
-    await addUser({ ...fields });
-    hide();
-    message.success('添加成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('添加失败请重试！');
-    return false;
-  }
-};
-
-/**
- * 更新节点
- * @param fields
- */
-const handleUpdate = async (fields: FormValueType) => {
-  const hide = message.loading('正在配置');
-  try {
-    await modifyUser(
-      {
-        userId: fields.id || '',
-      },
-      {
-        name: fields.name || '',
-        nickName: fields.nickName || '',
-        email: fields.email || '',
-      },
-    );
-    hide();
-
-    message.success('配置成功');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('配置失败请重试！');
-    return false;
-  }
-};
-
-/**
- *  删除节点
- * @param selectedRows
- */
-const handleRemove = async (selectedRows: API.ProductInfo[]) => {
-  const hide = message.loading('正在删除');
-  if (!selectedRows) return true;
-  try {
-    await deleteUser({
-      userId: selectedRows.find((row) => row.id)?.id || '',
-    });
-    hide();
-    message.success('删除成功，即将刷新');
-    return true;
-  } catch (error) {
-    hide();
-    message.error('删除失败，请重试');
-    return false;
-  }
-};
+const { refundPayment, queryPaymentList } = services.FinanceController;
 
 const TableList: React.FC<unknown> = () => {
-  const [createModalVisible, handleModalVisible] = useState<boolean>(false);
-  const [updateModalVisible, handleUpdateModalVisible] =
-    useState<boolean>(false);
-  const [stepFormValues, setStepFormValues] = useState({});
   const actionRef = useRef<ActionType>();
-  const [row, setRow] = useState<API.ProductInfo>();
-  const [selectedRowsState, setSelectedRows] = useState<API.ProductInfo[]>([]);
-  const columns: ProDescriptionsItemProps<API.ProductInfo>[] = [
+
+  /**
+   * 冻结会员
+   * @param id
+   */
+  const handleRefund = async (id: string) => {
+    const hide = message.loading('正在退款');
+    try {
+      await refundPayment(id);
+      hide();
+      message.success('退款成功');
+      actionRef.current?.reloadAndRest?.();
+      return true;
+    } catch (error) {
+      hide();
+      message.error('退款失败请重试！');
+      return false;
+    }
+  };
+
+  const columns: ProDescriptionsItemProps<API.PaymentInfo>[] = [
     {
       title: '序号',
       dataIndex: 'index',
@@ -108,7 +52,7 @@ const TableList: React.FC<unknown> = () => {
     },
     {
       title: '金额（元）',
-      dataIndex: 'cost',
+      dataIndex: 'price',
       hideInSearch: true,
     },
     {
@@ -138,7 +82,7 @@ const TableList: React.FC<unknown> = () => {
       valueType: 'option',
       render: (_, record) => (
         <>
-          <a href="">删除</a>
+          <a onClick={() => handleRefund(record.id)}>退款</a>
         </>
       ),
     },
@@ -146,29 +90,15 @@ const TableList: React.FC<unknown> = () => {
 
   return (
     <PageContainer header={{ title: null }}>
-      <ProTable<API.ProductInfo>
-        headerTitle="会员管理"
+      <ProTable<API.MemberInfo>
+        headerTitle="支付流水"
         tableLayout="auto"
-        // actionRef={actionRef}
+        actionRef={actionRef}
         rowKey="id"
-        // search={false}
-        search={
-          {
-            // labelWidth: 120,
-          }
-        }
-        // toolBarRender={() => [
-        //   <Button
-        //     key="1"
-        //     type="primary"
-        //     onClick={() => handleModalVisible(true)}
-        //   >
-        //     新建
-        //   </Button>,
-        // ]}
+        search={{}}
         options={false}
         request={async (params, sorter, filter) => {
-          const { data, success } = await queryUserList({
+          const { data, success } = await queryPaymentList({
             ...params,
             // FIXME: remove @ts-ignore
             // @ts-ignore
@@ -180,72 +110,8 @@ const TableList: React.FC<unknown> = () => {
             success,
           };
         }}
-        columns={columns}
-        rowSelection={{
-          onChange: (_, selectedRows) => setSelectedRows(selectedRows),
-        }}
+        columns={columns as ProColumns<API.MemberInfo, 'text'>[]}
       />
-      {selectedRowsState?.length > 0 && (
-        <FooterToolbar
-          extra={
-            <div>
-              已选择{' '}
-              <a style={{ fontWeight: 600 }}>{selectedRowsState.length}</a>{' '}
-              项&nbsp;&nbsp;
-            </div>
-          }
-        >
-          <Button
-            onClick={async () => {
-              await handleRemove(selectedRowsState);
-              setSelectedRows([]);
-              actionRef.current?.reloadAndRest?.();
-            }}
-          >
-            批量删除
-          </Button>
-          <Button type="primary">批量审批</Button>
-        </FooterToolbar>
-      )}
-      <CreateForm
-        onCancel={() => handleModalVisible(false)}
-        modalVisible={createModalVisible}
-      >
-        <ProTable<API.ProductInfo, API.ProductInfo>
-          onSubmit={async (value) => {
-            const success = await handleAdd(value);
-            if (success) {
-              handleModalVisible(false);
-              if (actionRef.current) {
-                actionRef.current.reload();
-              }
-            }
-          }}
-          rowKey="id"
-          type="form"
-          columns={columns}
-        />
-      </CreateForm>
-      {stepFormValues && Object.keys(stepFormValues).length ? (
-        <UpdateForm
-          onSubmit={async (value) => {
-            const success = await handleUpdate(value);
-            if (success) {
-              handleUpdateModalVisible(false);
-              setStepFormValues({});
-              if (actionRef.current) {
-                actionRef.current.reload();
-              }
-            }
-          }}
-          onCancel={() => {
-            handleUpdateModalVisible(false);
-            setStepFormValues({});
-          }}
-          updateModalVisible={updateModalVisible}
-          values={stepFormValues}
-        />
-      ) : null}
     </PageContainer>
   );
 };
