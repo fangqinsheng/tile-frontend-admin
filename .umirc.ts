@@ -7,7 +7,7 @@ export default defineConfig({
   initialState: {},
   request: {},
   layout: {
-    title: '@umijs/max',
+    title: '瓷砖小程序',
   },
   routes: [
     {
@@ -105,4 +105,5 @@ export default defineConfig({
     },
   ],
   npmClient: 'pnpm',
+  outputPath: 'public',
 });
